@@ -54,3 +54,6 @@ dkms.conf
 # Eclipse Files
 *.project
 *.cproject
+
+# Mac Files
+.DS_Store
