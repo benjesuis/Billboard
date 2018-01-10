@@ -32,19 +32,20 @@ int main (void) {
 
 	// Setup timers and interrupts
 	TCCR1B = (1 << WGM12); // Set CTC
-	OCR1A = 586; // Set compare value
+	OCR1A = 586; // Set compare value. This sets each interrupt to 50ms
 	TIMSK1 = (1 << OCIE1A); // Choose timer and interrupt mode
 	sei();
 	TCCR1B = (1 << CS12) | (1 <<CS10); // Set prescaler to 1024 and start timer
 }
 
 /**
- * Run every 50ms based on timer interrupts
- * Runs main data collection algorithm
+ * Runs every timer interrupt
+ * Implements main data collection algorithm
  */
 void ISR(TIMER1_COMPA_vect) {
-
-
+	poll();
+	char* str = getString();
+	write(str);
 	// Check flight status
 	if (!launch) {
 		checkLaunch();
@@ -68,9 +69,9 @@ int checkLaunch() {
 	for (int i = 0; i < 40; i++) {
 		if ((altitude - pastAltitudes[i]) > 100) {
 			flag = 1;
+			write("LAUNCH");
 		}
 	}
-	cleanPastAltitudes();
 	return flag;
 }
 
@@ -82,9 +83,9 @@ int checkApogee() {
 	for (int i = 0; i < 40; i++) {
 		if ((altitude - pastAltitudes[i]) < -5) {
 			flag = 1;
+			write("APOGEE");
 		}
 	}
-	cleanPastAltitudes();
 	return flag;
 }
 
@@ -95,21 +96,11 @@ int checkLanded() {
 	int flag = 0;
 	// Rocket has landed
 	if ((abs(pastAltitudes[0] - altitude)) < 5) {
-		flag = 1; // No need to call cleanPastAltitudes since it is no longer needed
+		flag = 1;
+		write("LANDING");
 	}
 	// Rocket has not landed
-	cleanPastAltitudes();
 	return flag;
-}
-
-/*
- * Retains only 40 past altitudes
- */
-void cleanPastAltitudes() {
-	int difference = sizeof(pastAltitudes) / sizeof(int) - 39;
-	for (int i = 0; i < 40; i++) {
-		pastAltitudes[i] = pastAltitudes[i + difference];
-	}
 }
 
 /**
@@ -134,7 +125,17 @@ void getgForce() {
  * Polls data from sensors and updates global variables
  */
 void poll() {
-
+	// Update altitude, magnetometer and photoresistors
+	// TODO get sensor inputs
+	// Update acceleration and g forces
+	getAcceleration();
+	getgForce();
+	// Retains only 40 past altitudes
+	for (int i = 0; i < 39; i++) {
+		pastAltitudes[i] = pastAltitudes[i+1];
+	}
+	// Updates pastAltitudes
+	pastAltitudes[39] = altitude;
 }
 
 /**
@@ -142,18 +143,19 @@ void poll() {
  */
 char* getString(float data[]) {
 	return "test";
+	// TODO implement getString
 }
 
 /**
  * Writes string to SD card
  */
 void write(char* string) {
-
+	// TODO implement SPI
 }
 
 /**
  * Analyses flight data and writes results to SD card
  */
 void analyseData() {
-
+	// TODO implement analyseData();
 }
