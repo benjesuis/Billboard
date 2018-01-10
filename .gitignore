@@ -57,3 +57,4 @@ dkms.conf
 
 # Mac Files
 .DS_Store
+.settings/
