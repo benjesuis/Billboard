@@ -24,6 +24,9 @@ int launch = 0;
 int apogee = 0;
 int landed = 0;
 
+/**
+ * Sets up pins and starts interrupt timer
+ */
 int main (void) {
 	// Set input and output pins
 	DDRB = 0xFF;
@@ -35,7 +38,7 @@ int main (void) {
 	OCR1A = 586; // Set compare value. This sets each interrupt to 50ms
 	TIMSK1 = (1 << OCIE1A); // Choose timer and interrupt mode
 	sei();
-	TCCR1B = (1 << CS12) | (1 <<CS10); // Set prescaler to 1024 and start timer
+	TCCR1B = (1 << CS12) | (1 << CS10); // Set prescaler to 1024 and start timer
 }
 
 /**
@@ -43,7 +46,9 @@ int main (void) {
  * Implements main data collection algorithm
  */
 void ISR(TIMER1_COMPA_vect) {
+	// Collect data
 	poll();
+	// Write data
 	char* str = getString();
 	write(str);
 	// Check flight status
@@ -68,6 +73,7 @@ int checkLaunch() {
 	int flag = 0;
 	for (int i = 0; i < 40; i++) {
 		if ((altitude - pastAltitudes[i]) > 100) {
+			// Rocket has launched
 			flag = 1;
 			write("LAUNCH");
 		}
@@ -82,6 +88,7 @@ int checkApogee() {
 	int flag = 0;
 	for (int i = 0; i < 40; i++) {
 		if ((altitude - pastAltitudes[i]) < -5) {
+			// Rocket has reached apogee
 			flag = 1;
 			write("APOGEE");
 		}
@@ -94,12 +101,11 @@ int checkApogee() {
  */
 int checkLanded() {
 	int flag = 0;
-	// Rocket has landed
 	if ((abs(pastAltitudes[0] - altitude)) < 5) {
+		// Rocket has landed
 		flag = 1;
 		write("LANDING");
 	}
-	// Rocket has not landed
 	return flag;
 }
 
