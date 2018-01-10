@@ -75,7 +75,7 @@ int checkLaunch() {
 		if ((altitude - pastAltitudes[i]) > 100) {
 			// Rocket has launched
 			flag = 1;
-			write("LAUNCH");
+			write("LAUNCH\n");
 		}
 	}
 	return flag;
@@ -90,7 +90,7 @@ int checkApogee() {
 		if ((altitude - pastAltitudes[i]) < -5) {
 			// Rocket has reached apogee
 			flag = 1;
-			write("APOGEE");
+			write("APOGEE\n");
 		}
 	}
 	return flag;
@@ -104,7 +104,7 @@ int checkLanded() {
 	if ((abs(pastAltitudes[0] - altitude)) < 5) {
 		// Rocket has landed
 		flag = 1;
-		write("LANDING");
+		write("LANDING\n");
 	}
 	return flag;
 }
@@ -148,8 +148,11 @@ void poll() {
  * Generates String to write to SD card
  */
 char* getString(float data[]) {
-	return "test";
-	// TODO implement getString
+	struct timeb tmb;
+	ftime(tmb); // TODO implement time structures
+	char* str = tmb.time + "," + tmb.millitm + "," + altitude + "," + acceleration + "," + gForce
+			 + "," + magnetometer + "," + photoresistor1 + "," + photoresistor2 + "\n";
+	return str;
 }
 
 /**
