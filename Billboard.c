@@ -1,41 +1,63 @@
 /*
- * Billboard.c
+ * Boston University Rocket Propulsion Group HPR Team 3
+ * To be used for data collection on Project Platypus
  *
- *  Created on: Jan 5, 2018
- *  Author: GlennXavier
+ * Created: Jan 5, 2018
+ * Author: Glenn Xavier
  */
 
-#include "Billboard.h"
 #include <avr/io.h>
-#include <avr/delay.h>
+#include <avr/interrupt.h>
+#define F_CPU 12000000L // Set MCU clock speed
 
-// MCU Clock Speed
-#define F_CPU 12000000L
+// Data variables
+float pastAltitudes[40];
+float altitude;
+float acceleration;
+float gForce;
+float magnetometer;
+float photoresistor1;
+float photoresistor2;
 
-double pastAltitudes[40];
-double altitude;
-// TODO Remove global variables
-
-void setup() {
-	// Set Pin Modes
-	DDRB = 0x11111111;
-	DDRC = 0x11111111;
-	DDRD = 0x11111111;
-	// TODO Set correct pins
-}
+// Flight status variables
+int launch = 0;
+int apogee = 0;
+int landed = 0;
 
 int main (void) {
-	setup();
+	// Set input and output pins
+	DDRB = 0xFF;
+	DDRC = 0xFF;
+	DDRD = 0xFF; // TODO Use correct pins
 
-	// Flight Status Variables
-	int launch;
-	int apogee;
-	int land;
+	// Setup timers and interrupts
+	TCCR1B = (1 << WGM12); // Set CTC
+	OCR1A = 586; // Set compare value
+	TIMSK1 = (1 << OCIE1A); // Choose timer and interrupt mode
+	sei();
+	TCCR1B = (1 << CS12) | (1 <<CS10); // Set prescaler to 1024 and start timer
+}
 
-	while(1) {
+/**
+ * Run every 50ms based on timer interrupts
+ * Runs main data collection algorithm
+ */
+void ISR(TIMER1_COMPA_vect) {
 
+
+	// Check flight status
+	if (!launch) {
+		checkLaunch();
+		return;
 	}
-	return (0);
+	if (!apogee) {
+		checkApogee();
+		return;
+	}
+	if(!landed) {
+		checkLanded();
+		analyseData();
+	}
 }
 
 /**
@@ -91,36 +113,47 @@ void cleanPastAltitudes() {
 }
 
 /**
- * Generates String to write to SD card
- */
-char* poll() {
-
-
-
-}
-
-/**
  * Returns the acceleration for 4 consecutive altitudes
  */
-float getAcceleration(float altitudes[]) {
-	float speeds[4];
+void getAcceleration() {
+	float speeds[2];
 	//50ms per poll
-	speeds[0] = (altitudes[1] - altitudes[0])/0.05;
-	speeds[1] = (altitudes[3] - altitudes[2])/0.05;
-	return (speeds[1] - speeds[0])/0.05;
+	speeds[0] = (pastAltitudes[37] - pastAltitudes[36])/0.05;
+	speeds[1] = (pastAltitudes[39] - pastAltitudes[38])/0.05;
+	acceleration =  (speeds[1] - speeds[0])/0.05;
 }
 
 /**
  * Returns g-Forces for a given acceleration
  */
-float getgForce(float acceleration) {
-	return acceleration/9.80665;
+void getgForce() {
+	gForce = acceleration/9.80665;
 }
 
+/**
+ * Polls data from sensors and updates global variables
+ */
+void poll() {
+
+}
+
+/**
+ * Generates String to write to SD card
+ */
+char* getString(float data[]) {
+	return "test";
+}
 
 /**
  * Writes string to SD card
  */
 void write(char* string) {
+
+}
+
+/**
+ * Analyses flight data and writes results to SD card
+ */
+void analyseData() {
 
 }
