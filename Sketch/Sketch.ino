@@ -8,6 +8,7 @@
 
 #include <TimerOne.h>
 #include <SD.h>
+#include <Time.h>
 #include <TimeLib.h>
 
 // Data variables
@@ -26,20 +27,29 @@ unsigned long interval = 20000;
 File file = false;
 
 // Pins
-const int led = ;
+const int ledRed = ;
+const int ledGreen = ;
+const int ledBlue = ;
 const int altimeter = ;
 const int magnetometer = ;
 const int photoresistor1 = ;
 const int photoresistor2 = ;
 const int slaveSelect = 4;
+const int errorLed = ;
 
 /**
  * Sets up pins and starts interrupt timer
  */
 int setup (void) {
   // Set input and output pins
-  pinMode(led, OUTPUT);
-  digitalWrite(led, HIGH);
+  pinMode(ledRed, OUTPUT);
+  pinMode(ledGreen, OUTPUT);
+  pinMode(ledBlue, OUTPUT);
+  digitalWrite(ledRed, HIGH);
+  digitalWrite(ledGreen, HIGH);
+  digitalWrite(ledBlue, HIGH);
+  // TODO Add colour
+  pinMode(errorLed, OUTPUT);
   pinMode(altimeter, INPUT);
   pinMode(magnetometer, INPUT);
   pinMode(photoresistor1, INPUT);
@@ -76,14 +86,12 @@ void loop() {
     // Check flight status
     if (!launch) {
       checkLaunch();
-      return;
-    }
-    if (!apogee) {
+    } else if (!apogee) {
       checkApogee();
-      return;
-    }
-    if(!landed) {
+    } else if (!landed) {
       checkLanded();
+    } else {
+      // Rocket has landed. Do data analysis
       analyseData();
     }
   }
@@ -92,7 +100,7 @@ void loop() {
 /**
  * Checks if the rocket has launched
  */
-int checkLaunch() {
+void checkLaunch() {
   int flag = 0;
   for (int i = 0; i < 39; i++) {
     if ((pastAltitudes[39] - pastAltitudes[i]) > 100) {
@@ -101,13 +109,13 @@ int checkLaunch() {
       writeToSD("LAUNCH");
     }
   }
-  return flag;
+  launch = flag;
 }
 
 /**
  * Checks if the rocket has reached apogee
  */
-int checkApogee() {
+void checkApogee() {
   int flag = 0;
   for (int i = 0; i < 39; i++) {
     if ((pastAltitudes[39] - pastAltitudes[i]) < -5) {
@@ -116,20 +124,20 @@ int checkApogee() {
       writeToSD("APOGEE");
     }
   }
-  return flag;
+  apogee = flag;
 }
 
 /**
  * Checks if the rocket has landed
  */
-int checkLanded() {
+void checkLanded() {
   int flag = 0;
   if ((pastAltitudes[39] - pastAltitudes[0]) == 0) {
     // Rocket has landed
     flag = 1;
     writeToSD("LANDING");
   }
-  return flag;
+  landed = flag;
 }
 
 /**
@@ -153,7 +161,7 @@ String poll(float data[]) {
   float acceleration = getAcceleration();
   
   // Get String to write to SD card
-  String str = String(hour()) + ":" + String(minute()) + ":" + String(second()) + ":" + String(millis()%1000) + "," + String(altitude)
+  String str = String(hour()) + ":" + String(minute()) + ":" + String(second()) + ":" + String(millis()) + "," + String(altitude)
     + "," + String(acceleration)+ "," + String(acceleration/9.80665) + "," + String(digitalRead(magnetometer)) + "," + String(analogRead(photoresistor1))
     + "," + String(analogRead(photoresistor2));
   return str;
