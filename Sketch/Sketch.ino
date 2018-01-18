@@ -27,9 +27,7 @@ unsigned long interval = 20000;
 File file = false;
 
 // Pins
-const int ledRed = ;
-const int ledGreen = ;
-const int ledBlue = ;
+const int led = ;
 const int altimeter = ;
 const int magnetometer = ;
 const int photoresistor1 = ;
@@ -42,13 +40,8 @@ const int errorLed = ;
  */
 int setup (void) {
   // Set input and output pins
-  pinMode(ledRed, OUTPUT);
-  pinMode(ledGreen, OUTPUT);
-  pinMode(ledBlue, OUTPUT);
-  digitalWrite(ledRed, HIGH);
-  digitalWrite(ledGreen, HIGH);
-  digitalWrite(ledBlue, HIGH);
-  // TODO Add colour
+  pinMode(led, OUTPUT);
+  digitalWrite(led, HIGH);
   pinMode(errorLed, OUTPUT);
   pinMode(altimeter, INPUT);
   pinMode(magnetometer, INPUT);
