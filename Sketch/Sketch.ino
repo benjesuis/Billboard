@@ -8,8 +8,8 @@
 
 #include <TimerOne.h>
 #include <SD.h>
-#include <Time.h>
 #include <TimeLib.h>
+#include <Streaming.h>
 
 // Data variables
 float pastAltitudes[40];
@@ -20,29 +20,30 @@ int apogee = 0;
 int landed = 0;
 
 // Time variables
-unsigned long currentMillis = previousMillis = millis();
+unsigned long currentMillis, previousMillis = millis();
 unsigned long interval = 20000;
 
 // SD Variables
-File file = false;
+File file;
 
 // Pins
-const int led = ;
-const int altimeter = ;
-const int magnetometer = ;
-const int photoresistor1 = ;
-const int photoresistor2 = ;
-const int slaveSelect = 4;
-const int errorLed = ;
+const int led = 1;
+const int altimeter = 2;
+const int magnetometer = 3;
+const int photoresistor1 = 5;
+const int photoresistor2 = 6;
+const int slaveSelect = 4; // Must be 4
+const int errorLed = 7;
 
 /**
  * Sets up pins and starts interrupt timer
  */
-int setup (void) {
+void setup(void) {
   // Set input and output pins
   pinMode(led, OUTPUT);
   digitalWrite(led, HIGH);
   pinMode(errorLed, OUTPUT);
+  digitalWrite(errorLed, HIGH); // Keep error LED on until setup is complete
   pinMode(altimeter, INPUT);
   pinMode(magnetometer, INPUT);
   pinMode(photoresistor1, INPUT);
@@ -57,11 +58,21 @@ int setup (void) {
   
   // Increments filename if filename has been taken
   int count = 0;
-  while (exists("log" + String(count) + ".txt")) {
+  char filename[10];
+  do {
+    strcpy(filename, "");
+    strcat(filename, "log");
+    strcat(filename, count);
+    strcat(filename, ".txt");
     count++;
-  }
+  } while (SD.exists(filename));
+  
   // Create new log.txt file
-  file = SD.open("log" + count + ".txt", FILE_WRITE); 
+  file = SD.open(filename, FILE_WRITE);
+  digitalWrite(errorLed, LOW);
+  
+  //Turn off error LED
+  digitalWrite(errorLed, LOW);
 }
 
 /**
@@ -69,13 +80,13 @@ int setup (void) {
  */
 void loop() {
   currentMillis = millis();
-  if (currentMillis - previousMillis() >= interval) {
+  if (currentMillis - previousMillis >= interval) {
     // Set time
     previousMillis = currentMillis;
     // Poll data
-    String str = poll()
+    char* string = poll();
     // Write data
-    write(str);
+    file.write(string);
     // Check flight status
     if (!launch) {
       checkLaunch();
@@ -84,7 +95,9 @@ void loop() {
     } else if (!landed) {
       checkLanded();
     } else {
-      // Rocket has landed. Do data analysis
+      // Save and close log.txt file
+      file.close();
+      // Do data analysis
       analyseData();
     }
   }
@@ -137,41 +150,86 @@ void checkLanded() {
  * Returns the acceleration for the 4 most recent altitudes
  */
 float getAcceleration() {
-  return ((pastAltitudes[37] - pastAltitudes[36])/0.05) - (pastAltitudes[39] - pastAltitudes[38])/0.05)) / 0.05;
+  return (((pastAltitudes[37] - pastAltitudes[36])/0.05) - ((pastAltitudes[39] - pastAltitudes[38])/0.05)) / 0.05;
 }
 
 /**
- * Polls data from sensors, then generates String to write to SD card
+ * Polls data from sensors, then generates string to write to SD card
  */
-String poll(float data[]) {
+char* poll() {
   // Retain only 40 past altitudes
   for (int i = 0; i < 39; i++) {
     pastAltitudes[i] = pastAltitudes[i+1];
   }
   
   // Update altitude
-  pastAltitudes[39] = digitalRead(altimeter);
+  pastAltitudes[39] = digitalRead(altimeter); // TODO Correct implementation of altimeter
   float acceleration = getAcceleration();
   
-  // Get String to write to SD card
-  String str = String(hour()) + ":" + String(minute()) + ":" + String(second()) + ":" + String(millis()) + "," + String(altitude)
-    + "," + String(acceleration)+ "," + String(acceleration/9.80665) + "," + String(digitalRead(magnetometer)) + "," + String(analogRead(photoresistor1))
-    + "," + String(analogRead(photoresistor2));
-  return str;
+  // Get string to write to SD card
+  char string[100];
+  strcat(string, hour());
+  strcat(string, ",");
+  strcat(string, minute());
+  strcat(string, ",");
+  strcat(string, second());
+  strcat(string, ",");
+  strcat(string, millis() % 1000);
+  strcat(string, ",");
+  
+  char altitudeString[10];
+  dtostrf(pastAltitudes[39], 10, 3, altitudeString);
+  strcat(string, altitudeString);
+  strcat(string, ",");
+  
+  char accelerationString[10];
+  dtostrf(acceleration, 10, 3, accelerationString);
+  strcat(string, accelerationString);
+  strcat(string, ",");
+  
+  char gforceString[10];
+  dtostrf(acceleration/9.80665, 10, 3, gforceString);
+  strcat(string, gforceString);
+  strcat(string, ",");
+  
+  strcat(string, digitalRead(magnetometer));
+  strcat(string, ",");
+  strcat(string, analogRead(photoresistor1));
+  strcat(string, ",");
+  strcat(string, analogRead(photoresistor2));
+  strcat(string, "\n");
+  return string;
 }
 
 /**
  * Writes string to SD card
  */
-void writeToSD(String string) {
+void writeToSD(char* string) {
   file.println(string);
-  flush();
+  file.flush();
 }
 
 /**
  * Analyses flight data and writes results to SD card
  */
 void analyseData() {
-  // TODO implement analyseData();
+  // Increments filename if filename has been taken
+  int count = 0;
+  char filename[10];
+  do {
+    strcpy(filename, "");
+    strcat(filename, "data");
+    strcat(filename, count);
+    strcat(filename, ".txt");
+    count++;
+  } while (SD.exists(filename));
+  
+  // Create new data.txt file
+  file = SD.open(filename, FILE_WRITE);
+
+  // TODO add data analysis formulae
+  
+  // Save and close data.txt file
+  file.close();
 }
 
