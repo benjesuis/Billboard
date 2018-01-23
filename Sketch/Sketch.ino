@@ -42,12 +42,14 @@ void setup(void) {
   // Set input and output pins
   pinMode(led, OUTPUT);
   digitalWrite(led, HIGH);
-  pinMode(errorLed, OUTPUT);
-  digitalWrite(errorLed, HIGH); // Keep error LED on until setup is complete
   pinMode(altimeter, INPUT);
   pinMode(magnetometer, INPUT);
   pinMode(photoresistor1, INPUT);
   pinMode(photoresistor2, INPUT);
+
+  // Keep error LED on until algorithm runs
+  pinMode(errorLed, OUTPUT);
+  digitalWrite(errorLed, HIGH);
   
   // Setup SD
   pinMode(SS, OUTPUT); // Pin 10 must be MOSI pin
@@ -69,16 +71,15 @@ void setup(void) {
   
   // Create new log.txt file
   file = SD.open(filename, FILE_WRITE);
-  digitalWrite(errorLed, LOW);
-  
-  //Turn off error LED
-  digitalWrite(errorLed, LOW);
 }
 
 /**
  * Implements main data collection algorithm
  */
 void loop() {
+  //Turn on error LED
+  digitalWrite(errorLed, HIGH);
+  
   currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
     // Set time
@@ -87,6 +88,9 @@ void loop() {
     char* string = poll();
     // Write data
     file.write(string);
+    // Turn off error LED
+    digitalWrite(errorLed, LOW);
+    
     // Check flight status
     if (!launch) {
       checkLaunch();
@@ -213,6 +217,9 @@ void writeToSD(char* string) {
  * Analyses flight data and writes results to SD card
  */
 void analyseData() {
+  // Turn on error LED
+  digitalWrite(errorLed, LOW);
+  
   // Increments filename if filename has been taken
   int count = 0;
   char filename[10];
@@ -226,6 +233,9 @@ void analyseData() {
   
   // Create new data.txt file
   file = SD.open(filename, FILE_WRITE);
+
+  // Turn off error LED
+  digitalWrite(errorLed, LOW);
 
   // TODO add data analysis formulae
   
