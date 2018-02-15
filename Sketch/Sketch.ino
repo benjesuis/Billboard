@@ -9,7 +9,6 @@
 #include <TimerOne.h>
 #include <SD.h>
 #include <TimeLib.h>
-#include <Streaming.h>
 
 // Data variables
 float pastAltitudes[40];
@@ -27,33 +26,42 @@ unsigned long interval = 20000;
 File file;
 
 // Pins
-const int led = 1;
-const int altimeter = 2;
-const int magnetometer = 3;
-const int photoresistor1 = 5;
-const int photoresistor2 = 6;
-const int slaveSelect = 4; // Must be 4
-const int errorLed = 7;
+const int led1 = 0;
+const int led2 = 1;
+const int ss = 10; // Apparently needs to be pin 4?
+const int mosi = 11;
+const int miso = 12;
+const int sck = 13;
+const int pr1in = 14;
+const int pr1out = 15;
+const int pr2in = 16;
+const int pr2out = 17;
+const int sda = 18;
+const int scl = 19;
 
 /**
  * Sets up pins and starts interrupt timer
  */
 void setup(void) {
   // Set input and output pins
-  pinMode(led, OUTPUT);
-  digitalWrite(led, HIGH);
-  pinMode(altimeter, INPUT);
-  pinMode(magnetometer, INPUT);
-  pinMode(photoresistor1, INPUT);
-  pinMode(photoresistor2, INPUT);
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(ss, OUTPUT);
+  pinMode(mosi,OUTPUT);
+  pinMode(miso,INPUT);
+  pinMode(sck, OUTPUT);
+  pinMode(pr1in, INPUT);
+  pinMode(pr1out, OUTPUT);
+  pinMode(pr2in, INPUT);
+  pinMode(pr2out, OUTPUT);
+  pinMode(sda, OUTPUT);
+  pinMode(scl, OUTPUT);
 
-  // Keep error LED on until algorithm runs
-  pinMode(errorLed, OUTPUT);
-  digitalWrite(errorLed, HIGH);
-  
+  digitalWrite(led, HIGH);
+  digitalWrite(led, HIGH);
+
   // Setup SD
-  pinMode(SS, OUTPUT); // Pin 10 must be MOSI pin
-  while(!SD.begin(slaveSelect)) {
+  while(!SD.begin(ss)) {
     // Waits for SD card to be inserted
     delay(100);
   }
@@ -77,8 +85,6 @@ void setup(void) {
  * Implements main data collection algorithm
  */
 void loop() {
-  //Turn on error LED
-  digitalWrite(errorLed, HIGH);
   
   currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
@@ -88,8 +94,6 @@ void loop() {
     char* string = poll();
     // Write data
     file.write(string);
-    // Turn off error LED
-    digitalWrite(errorLed, LOW);
     
     // Check flight status
     if (!launch) {
@@ -172,12 +176,10 @@ char* poll() {
   
   // Get string to write to SD card
   char string[100];
-  strcat(string, hour());
-  strcat(string, ",");
   strcat(string, minute());
-  strcat(string, ",");
+  strcat(string, ":");
   strcat(string, second());
-  strcat(string, ",");
+  strcat(string, ":");
   strcat(string, millis() % 1000);
   strcat(string, ",");
   
@@ -217,9 +219,6 @@ void writeToSD(char* string) {
  * Analyses flight data and writes results to SD card
  */
 void analyseData() {
-  // Turn on error LED
-  digitalWrite(errorLed, LOW);
-  
   // Increments filename if filename has been taken
   int count = 0;
   char filename[10];
@@ -233,9 +232,6 @@ void analyseData() {
   
   // Create new data.txt file
   file = SD.open(filename, FILE_WRITE);
-
-  // Turn off error LED
-  digitalWrite(errorLed, LOW);
 
   // TODO add data analysis formulae
   
