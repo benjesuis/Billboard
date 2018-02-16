@@ -57,8 +57,11 @@ void setup(void) {
   pinMode(sda, OUTPUT);
   pinMode(scl, OUTPUT);
 
-  digitalWrite(led, HIGH);
-  digitalWrite(led, HIGH);
+  digitalWrite(led1, HIGH);
+  digitalWrite(led2, HIGH);
+
+  // Setup I2C
+  Wire.begin();
 
   // Setup SD
   while(!SD.begin(ss)) {
@@ -155,6 +158,32 @@ void checkLanded() {
 }
 
 /**
+ * Returns the most recent altitude and temperature
+ */
+int getAltitude() {
+  Wire.requestFrom(0x60, 5);
+  int temp = 0;
+  while(Wire.available()) { // TODO fix blocking
+    temp = (temp << 4) + Wire.read();
+  }
+  return temp;
+}
+
+/**
+ * Returns the most recent change in magnetic field
+ */
+int getMagnet() {
+  Wire.requestFrom(0x0E, 1);
+  while(!Wire.available()) {
+    continue(); // TODO fix blocking
+  }
+  return Wire.read();
+}
+
+strcat(string, digitalRead(magnetometer));
+  strcat(string, ",");
+
+/**
  * Returns the acceleration for the 4 most recent altitudes
  */
 float getAcceleration() {
@@ -170,10 +199,17 @@ char* poll() {
     pastAltitudes[i] = pastAltitudes[i+1];
   }
   
-  // Update altitude
-  pastAltitudes[39] = digitalRead(altimeter); // TODO Correct implementation of altimeter
+  // Update altitude and temperature
+  int temp = getAltitude;
+  pastAltitude[39] = temp >> 8;
+  int temperature = temp & 0xFF;
+
+  // Update acceleration
   float acceleration = getAcceleration();
   
+  // Update magnetometer
+  int magnet = getMagnet();
+
   // Get string to write to SD card
   char string[100];
   strcat(string, minute());
@@ -183,23 +219,31 @@ char* poll() {
   strcat(string, millis() % 1000);
   strcat(string, ",");
   
-  char altitudeString[10];
-  dtostrf(pastAltitudes[39], 10, 3, altitudeString);
+  char temperatureString[4];
+  itoa(temperature, temperatureString, 10);
+  strcat(string, temperatureString);
+  strcat(string, ",");
+
+  char altitudeString[5];
+  itoa(pastAltitudes[39], altitudeString, 10);
   strcat(string, altitudeString);
   strcat(string, ",");
   
-  char accelerationString[10];
-  dtostrf(acceleration, 10, 3, accelerationString);
+  char accelerationString[6];
+  dtostrf(acceleration, 6, 2, accelerationString);
   strcat(string, accelerationString);
   strcat(string, ",");
   
   char gforceString[10];
-  dtostrf(acceleration/9.80665, 10, 3, gforceString);
+  dtostrf(acceleration/9.80665, 6, 2, gforceString);
   strcat(string, gforceString);
   strcat(string, ",");
-  
-  strcat(string, digitalRead(magnetometer));
+
+  char magnetString[10];
+  itoa(magnet, magnetString, 10);
+  strcat(string, magnetString);
   strcat(string, ",");
+
   strcat(string, analogRead(photoresistor1));
   strcat(string, ",");
   strcat(string, analogRead(photoresistor2));
