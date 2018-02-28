@@ -28,7 +28,7 @@ File file;
 // Pins
 const int led1 = 0;
 const int led2 = 1;
-const int ss = 10; // Apparently needs to be pin 4?
+const int ss = 10;
 const int mosi = 11;
 const int miso = 12;
 const int sck = 13;
