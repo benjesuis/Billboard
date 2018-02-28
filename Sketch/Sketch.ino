@@ -39,6 +39,19 @@ const int pr2out = 17;
 const int sda = 18;
 const int scl = 19;
 
+// Function Prototypes
+void setup(void);
+void loop();
+void checkLaunch();
+void checkApogee();
+void checkLanded();
+int getAltitude();
+int getMagnet();
+float getAcceleration();
+char* poll();
+void writeToSD(char* string);
+void analyseData();
+
 /**
  * Sets up pins and starts interrupt timer
  */
