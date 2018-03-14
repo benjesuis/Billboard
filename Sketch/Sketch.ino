@@ -9,7 +9,7 @@
 #include <TimerOne.h>
 #include <SD.h>
 #include <TimeLib.h>
-
+#include <Wire.h>
 // Data variables
 float pastAltitudes[40];
 
@@ -20,7 +20,7 @@ int landed = 0;
 
 // Time variables
 unsigned long currentMillis, previousMillis = millis();
-unsigned long interval = 20000;
+const unsigned long _INTERVAL = 20000;
 
 // SD Variables
 File file;
@@ -69,6 +69,7 @@ void setup(void) {
   pinMode(pr2out, OUTPUT);
   pinMode(sda, OUTPUT);
   pinMode(scl, OUTPUT);
+  pinMode(10, OUTPUT); // Needed for SD library
 
   digitalWrite(led1, HIGH);
   digitalWrite(led2, HIGH);
@@ -103,7 +104,7 @@ void setup(void) {
 void loop() {
   
   currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
+  if (currentMillis - previousMillis >= _INTERVAL) {
     // Set time
     previousMillis = currentMillis;
     // Poll data
@@ -174,27 +175,26 @@ void checkLanded() {
  * Returns the most recent altitude and temperature
  */
 int getAltitude() {
-  Wire.requestFrom(0x60, 5);
+  /*Wire.requestFrom(0x60, 5);
   int temp = 0;
   while(Wire.available()) { // TODO fix blocking
     temp = (temp << 4) + Wire.read();
   }
-  return temp;
+  return temp;*/ // Commented for unit testing
+  return random(5000);
 }
 
 /**
  * Returns the most recent change in magnetic field
  */
 int getMagnet() {
-  Wire.requestFrom(0x0E, 1);
+  /*Wire.requestFrom(0x0E, 1);
   while(!Wire.available()) {
     continue(); // TODO fix blocking
   }
-  return Wire.read();
+  return Wire.read();*/ // Commented for unit testing
+  return random(5000);
 }
-
-strcat(string, digitalRead(magnetometer));
-  strcat(string, ",");
 
 /**
  * Returns the acceleration for the 4 most recent altitudes
@@ -214,7 +214,7 @@ char* poll() {
   
   // Update altitude and temperature
   int temp = getAltitude;
-  pastAltitude[39] = temp >> 8;
+  pastAltitudes[39] = temp >> 8;
   int temperature = temp & 0xFF;
 
   // Update acceleration
@@ -257,9 +257,9 @@ char* poll() {
   strcat(string, magnetString);
   strcat(string, ",");
 
-  strcat(string, analogRead(photoresistor1));
+  strcat(string, analogRead(pr1in));
   strcat(string, ",");
-  strcat(string, analogRead(photoresistor2));
+  strcat(string, analogRead(pr2in));
   strcat(string, "\n");
   return string;
 }
@@ -268,8 +268,9 @@ char* poll() {
  * Writes string to SD card
  */
 void writeToSD(char* string) {
-  file.println(string);
-  file.flush();
+  /*file.println(string);
+  file.flush();*/ // Commented out for unit testing
+  Serial.println(string);
 }
 
 /**
