@@ -20,7 +20,7 @@ int landed = 0;
 
 // Time variables
 unsigned long currentMillis, previousMillis = millis();
-const unsigned long _INTERVAL = 20000;
+const unsigned long _INTERVAL = 5;
 
 // SD Variables
 File file;
@@ -41,22 +41,22 @@ const int scl = 19;
 
 // Function Prototypes
 void setup(void);
-void loop();
-void checkLaunch();
-void checkApogee();
-void checkLanded();
-int getAltitude();
-int getMagnet();
-float getAcceleration();
-char* poll();
-void writeToSD(char* string);
-void analyseData();
+void loop(void);
+void checkLaunch(void);
+void checkApogee(void);
+void checkLanded(void);
+int getAltitude(void);
+int getMagnet(void);
+float getAcceleration(void);
+String poll(void);
+void analyseData(void);
 
 /**
  * Sets up pins and starts interrupt timer
  */
 void setup(void) {
   // Set input and output pins
+  Serial.begin(500000);
   pinMode(led1, OUTPUT);
   pinMode(led2, OUTPUT);
   pinMode(ss, OUTPUT);
@@ -76,7 +76,8 @@ void setup(void) {
 
   // Setup I2C
   Wire.begin();
-
+  
+  /*
   // Setup SD
   while(!SD.begin(ss)) {
     // Waits for SD card to be inserted
@@ -96,21 +97,22 @@ void setup(void) {
   
   // Create new log.txt file
   file = SD.open(filename, FILE_WRITE);
+  */ // Commented for function testing
 }
 
 /**
  * Implements main data collection algorithm
  */
 void loop() {
-  
   currentMillis = millis();
   if (currentMillis - previousMillis >= _INTERVAL) {
     // Set time
     previousMillis = currentMillis;
     // Poll data
-    char* string = poll();
+    String string = poll();
     // Write data
-    file.write(string);
+    Serial.print(string);
+    /*file.write(string);*/ // Commented for function testing
     
     // Check flight status
     if (!launch) {
@@ -119,7 +121,7 @@ void loop() {
       checkApogee();
     } else if (!landed) {
       checkLanded();
-    } else {
+    } else if (landed) {
       // Save and close log.txt file
       file.close();
       // Do data analysis
@@ -132,56 +134,49 @@ void loop() {
  * Checks if the rocket has launched
  */
 void checkLaunch() {
-  int flag = 0;
   for (int i = 0; i < 39; i++) {
     if ((pastAltitudes[39] - pastAltitudes[i]) > 100) {
       // Rocket has launched
-      flag = 1;
-      writeToSD("LAUNCH");
+      launch = 1;
+      /*file.write("LAUNCH");*/ // Commented for unit testing
     }
   }
-  launch = flag;
 }
 
 /**
  * Checks if the rocket has reached apogee
  */
 void checkApogee() {
-  int flag = 0;
   for (int i = 0; i < 39; i++) {
     if ((pastAltitudes[39] - pastAltitudes[i]) < -5) {
       // Rocket has reached apogee
-      flag = 1;
-      writeToSD("APOGEE");
+      apogee = 1;
+      /*file.write("APOGEE");*/
     }
   }
-  apogee = flag;
 }
 
 /**
  * Checks if the rocket has landed
  */
 void checkLanded() {
-  int flag = 0;
   if ((pastAltitudes[39] - pastAltitudes[0]) == 0) {
     // Rocket has landed
-    flag = 1;
-    writeToSD("LANDING");
+    landed = 1;
+    /*file.write("LANDING");*/ // Commented for unit testing
   }
-  landed = flag;
 }
 
 /**
  * Returns the most recent altitude and temperature
  */
 int getAltitude() {
-  /*Wire.requestFrom(0x60, 5);
+  Wire.requestFrom(0x68, 5); //0x60
   int temp = 0;
   while(Wire.available()) { // TODO fix blocking
     temp = (temp << 4) + Wire.read();
   }
-  return temp;*/ // Commented for unit testing
-  return random(5000);
+  return temp;
 }
 
 /**
@@ -193,7 +188,7 @@ int getMagnet() {
     continue(); // TODO fix blocking
   }
   return Wire.read();*/ // Commented for unit testing
-  return random(5000);
+  return 10;
 }
 
 /**
@@ -206,71 +201,58 @@ float getAcceleration() {
 /**
  * Polls data from sensors, then generates string to write to SD card
  */
-char* poll() {
+String poll() {
   // Retain only 40 past altitudes
   for (int i = 0; i < 39; i++) {
     pastAltitudes[i] = pastAltitudes[i+1];
   }
   
   // Update altitude and temperature
-  int temp = getAltitude;
+  int temp = getAltitude();
   pastAltitudes[39] = temp >> 8;
   int temperature = temp & 0xFF;
-
+  
   // Update acceleration
   float acceleration = getAcceleration();
   
   // Update magnetometer
   int magnet = getMagnet();
-
+  
   // Get string to write to SD card
-  char string[100];
-  strcat(string, minute());
-  strcat(string, ":");
-  strcat(string, second());
-  strcat(string, ":");
-  strcat(string, millis() % 1000);
-  strcat(string, ",");
+  String string;
+  string.concat(minute());
+  string.concat(":");
+  string.concat(second());
+  string.concat(":");
+  string.concat(millis() % 1000);
+  string.concat(",");
   
-  char temperatureString[4];
-  itoa(temperature, temperatureString, 10);
-  strcat(string, temperatureString);
-  strcat(string, ",");
-
-  char altitudeString[5];
-  itoa(pastAltitudes[39], altitudeString, 10);
-  strcat(string, altitudeString);
-  strcat(string, ",");
+  String temperatureString = String(temperature);
+  string.concat(temperatureString);
+  string.concat(",");
   
-  char accelerationString[6];
-  dtostrf(acceleration, 6, 2, accelerationString);
-  strcat(string, accelerationString);
-  strcat(string, ",");
+  String altitudeString = String(pastAltitudes[39]);
+  string.concat(altitudeString);
+  string.concat(",");
   
-  char gforceString[10];
-  dtostrf(acceleration/9.80665, 6, 2, gforceString);
-  strcat(string, gforceString);
-  strcat(string, ",");
+  String accelerationString = String(acceleration);
+  string.concat(accelerationString);
+  string.concat(",");
+  
+  String gforceString = String(acceleration/9.80665);
+  string.concat(gforceString);
+  string.concat(",");
 
-  char magnetString[10];
-  itoa(magnet, magnetString, 10);
-  strcat(string, magnetString);
-  strcat(string, ",");
-
-  strcat(string, analogRead(pr1in));
-  strcat(string, ",");
-  strcat(string, analogRead(pr2in));
-  strcat(string, "\n");
+  String magnetString = String(magnet);
+  string.concat(magnetString);
+  string.concat(",");
+  
+  string.concat(analogRead(pr1in));
+  string.concat(",");
+  string.concat(analogRead(pr2in));
+  string.concat("\n");
+  
   return string;
-}
-
-/**
- * Writes string to SD card
- */
-void writeToSD(char* string) {
-  /*file.println(string);
-  file.flush();*/ // Commented out for unit testing
-  Serial.println(string);
 }
 
 /**
