@@ -39,6 +39,7 @@ const int pr2out = 17;
 const int sda = 18;
 const int scl = 19;
 
+<<<<<<< HEAD
 // Function Prototypes
 void setup(void);
 void loop(void);
@@ -51,6 +52,8 @@ float getAcceleration(void);
 String poll(void);
 void analyseData(void);
 
+=======
+>>>>>>> parent of 51459cd... Added function prototypes
 /**
  * Sets up pins and starts interrupt timer
  */
