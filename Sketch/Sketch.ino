@@ -4,7 +4,7 @@
  *
  * Created: Jan 10, 2018
  * Author: Glenn Xavier
- * Helper: Ben Livney
+ * Edited by: Ben Livney
  */
 
 #include <SD.h>
@@ -13,8 +13,8 @@
 
 // Data variables
 float pastAltitudes[40];
-float magSum;
-int magCount;
+float magSum = 0;
+int magCount = 0;
 
 // Flight status variables
 int launch = 0;
@@ -42,7 +42,6 @@ const int pr2out = 17;
 const int sda = 18;
 const int scl = 19;
 
-//<<<<<<< HEAD
 // Function Prototypes
 void setup(void);
 void loop(void);
@@ -54,18 +53,13 @@ int getMagnet(void);
 float getAcceleration(void);
 String poll(void);
 void analyseData(void);
-float chapmanFerraro(float);
+float calculateChapmanFerraro(float);
 
-//=======
-//>>>>>>> parent of 51459cd... Added function prototypes
 /**
    Sets up pins and starts interrupt timer
 */
 void setup(void) {
-  magSum = 0;
-  magCount = 0;
   // Set input and output pins
-  Serial.begin(9600);
   pinMode(led1, OUTPUT);
   pinMode(led2, OUTPUT);
   pinMode(ss, OUTPUT);
@@ -97,15 +91,14 @@ void setup(void) {
   int count = 0;
   String filename = "DATA0.txt";
   while (SD.exists(filename)) {
+    count++;
     filename = "DATA";
     filename.concat(String(count));
     filename.concat(".txt");
-    count++;
   }
 
   // Create new log.txt file
   file = SD.open(filename, FILE_WRITE);
-  // Commented for function testing
 }
 
 /**
@@ -121,8 +114,7 @@ void loop() {
     // Write data
     char line[50];
     string.toCharArray(line, 50);
-    Serial.print(line);
-    file.write(line); // Commented for function testing
+    file.write(line);
 
     // Check flight status
     if (!launch) {
@@ -146,9 +138,7 @@ void checkLaunch() {
     if ((pastAltitudes[39] - pastAltitudes[i]) > 100 || second() > 0) {
       // Rocket has launched
       launch = 1;
-      file.write("LAUNCH\r\n"); // Commented for unit testing
-      Serial.println("LAUNCH");
-      break; //delete this later
+      file.write("LAUNCH\r\n");
     }
   }
 }
@@ -162,8 +152,6 @@ void checkApogee() {
       // Rocket has reached apogee
       apogee = 1;
       file.write("APOGEE\r\n");
-      Serial.println("APOGEE");
-      break; //delete this later
     }
   }
 }
@@ -175,8 +163,7 @@ void checkLanded() {
   if ((pastAltitudes[39] - pastAltitudes[0]) == 0) {
     // Rocket has landed
     landed = 1;
-    file.write("LANDING\r\n"); // Commented for unit testing
-    Serial.println("LANDING");
+    file.write("LANDED\r\n");
   }
 }
 
@@ -184,7 +171,7 @@ void checkLanded() {
    Returns the most recent altitude and temperature
 */
 int getAltitude() {
-  Wire.requestFrom(0x68, 5); //0x60
+  Wire.requestFrom(0x60, 5);
   int temp = 0;
   while (Wire.available()) { // TODO fix blocking
     temp = (temp << 4) + Wire.read();
@@ -196,12 +183,11 @@ int getAltitude() {
    Returns the most recent change in magnetic field
 */
 int getMagnet() {
-  /*Wire.requestFrom(0x0E, 1);
-    while(!Wire.available()) {
+  Wire.requestFrom(0x0E, 1);
+  while(!Wire.available()) {
     continue(); // TODO fix blocking
-    }
-    return Wire.read();*/ // Commented for unit testing
-  return 10;
+  }
+  return Wire.read();
 }
 
 /**
@@ -230,7 +216,7 @@ String poll() {
 
   // Update magnetometer
   int magnet = getMagnet();
-  magSum = magSum + magnet;
+  magSum += magnet;
   magCount++;
 
   // Get string to write to SD card
@@ -275,30 +261,27 @@ String poll() {
 */
 void analyseData() {
   // Data analysis formulae
-  float aveMag = magSum / magCount;
-  float magnetofloat = chapmanFerraro(aveMag);
-  String magnetopause = String(magnetofloat);
-  String header = "magnetopause altitude: ";
-  header.concat(magnetopause);
-  char string[50];
-  header.toCharArray(string, 50);
-  Serial.println(string);
-  file.write(string);
+  float magAverage = magSum / magCount;
+  float magnetFloat = calculateChapmanFerraro(magAverage);
+  file.write("Magnetopause altitude: %f", magnetFloat);
   // Save and close data.txt file
   file.close();
-  //Don't do anything else
-  while (1);
+  // Do nothing
+  while (1) {};
 }
 
-float chapmanFerraro(float bField) {
+/**
+   Calculates magnetopause using Chapman-Ferraro equation
+*/
+float calculateChapmanFerraro(float bField) {
   //bField should be in Tesla, not microTesla
-  float R = 6.738 * pow(10, 6),
-        mu = 4 * PI, // * pow(10, -7),
-        rho = 1.12, // * pow(10, -20),
-        v2 = 1.6; // * pow(10, 11);
+  float R = 6.738 * pow(10, 6)
+  float mu = 4 * PI, // * pow(10, -7),
+  float rho = 1.12, // * pow(10, -20),
+  float v2 = 1.6; // * pow(10, 11);
   int power = (-6 - 6 + 7 + 20 - 11);
   float base = (2 * bField * bField) / (mu * rho * v2);
-  float r = R * pow(base * pow(10, power), 1.0 / 6.0);
-  return r;
+  float result = R * pow(base * pow(10, power), 1.0 / 6.0);
+  return result;
 }
 
