@@ -4,14 +4,17 @@
  *
  * Created: Jan 10, 2018
  * Author: Glenn Xavier
+ * Edited by: Ben Livney
  */
 
-#include <TimerOne.h>
 #include <SD.h>
 #include <TimeLib.h>
 #include <Wire.h>
+
 // Data variables
 float pastAltitudes[40];
+float magSum = 0;
+int magCount = 0;
 
 // Flight status variables
 int launch = 0;
@@ -20,7 +23,7 @@ int landed = 0;
 
 // Time variables
 unsigned long currentMillis, previousMillis = millis();
-const unsigned long _INTERVAL = 5;
+const unsigned long _INTERVAL = 20;
 
 // SD Variables
 File file;
@@ -51,20 +54,20 @@ int getMagnet(void);
 float getAcceleration(void);
 String poll(void);
 void analyseData(void);
+float calculateChapmanFerraro(float);
 
 =======
 >>>>>>> parent of 51459cd... Added function prototypes
 /**
- * Sets up pins and starts interrupt timer
- */
+   Sets up pins and starts interrupt timer
+*/
 void setup(void) {
   // Set input and output pins
-  Serial.begin(500000);
   pinMode(led1, OUTPUT);
   pinMode(led2, OUTPUT);
   pinMode(ss, OUTPUT);
-  pinMode(mosi,OUTPUT);
-  pinMode(miso,INPUT);
+  pinMode(mosi, OUTPUT);
+  pinMode(miso, INPUT);
   pinMode(sck, OUTPUT);
   pinMode(pr1in, INPUT);
   pinMode(pr1out, OUTPUT);
@@ -78,33 +81,31 @@ void setup(void) {
 
   // Setup I2C
   Wire.begin();
-  
-  /*
+
+
   // Setup SD
-  while(!SD.begin(ss)) {
+  while (!SD.begin(ss)) {
     // Waits for SD card to be inserted
     delay(100);
   }
-  
+
   // Increments filename if filename has been taken
   int count = 0;
-  char filename[10];
-  do {
-    strcpy(filename, "");
-    strcat(filename, "log");
-    strcat(filename, count);
-    strcat(filename, ".txt");
+  String filename = "DATA0.txt";
+  while (SD.exists(filename)) {
     count++;
-  } while (SD.exists(filename));
-  
+    filename = "DATA";
+    filename.concat(String(count));
+    filename.concat(".txt");
+  }
+
   // Create new log.txt file
   file = SD.open(filename, FILE_WRITE);
-  */ // Commented for function testing
 }
 
 /**
- * Implements main data collection algorithm
- */
+   Implements main data collection algorithm
+*/
 void loop() {
   currentMillis = millis();
   if (currentMillis - previousMillis >= _INTERVAL) {
@@ -113,9 +114,10 @@ void loop() {
     // Poll data
     String string = poll();
     // Write data
-    Serial.print(string);
-    /*file.write(string);*/ // Commented for function testing
-    
+    char line[50];
+    string.toCharArray(line, 50);
+    file.write(line);
+
     // Check flight status
     if (!launch) {
       checkLaunch();
@@ -124,8 +126,6 @@ void loop() {
     } else if (!landed) {
       checkLanded();
     } else if (landed) {
-      // Save and close log.txt file
-      file.close();
       // Do data analysis
       analyseData();
     }
@@ -133,93 +133,94 @@ void loop() {
 }
 
 /**
- * Checks if the rocket has launched
- */
+   Checks if the rocket has launched
+*/
 void checkLaunch() {
   for (int i = 0; i < 39; i++) {
-    if ((pastAltitudes[39] - pastAltitudes[i]) > 100) {
+    if ((pastAltitudes[39] - pastAltitudes[i]) > 100 || second() > 0) {
       // Rocket has launched
       launch = 1;
-      /*file.write("LAUNCH");*/ // Commented for unit testing
+      file.write("LAUNCH\r\n");
     }
   }
 }
 
 /**
- * Checks if the rocket has reached apogee
- */
+   Checks if the rocket has reached apogee
+*/
 void checkApogee() {
   for (int i = 0; i < 39; i++) {
-    if ((pastAltitudes[39] - pastAltitudes[i]) < -5) {
+    if ((pastAltitudes[39] - pastAltitudes[i]) < -5 || second() > 1) {
       // Rocket has reached apogee
       apogee = 1;
-      /*file.write("APOGEE");*/
+      file.write("APOGEE\r\n");
     }
   }
 }
 
 /**
- * Checks if the rocket has landed
- */
+   Checks if the rocket has landed
+*/
 void checkLanded() {
   if ((pastAltitudes[39] - pastAltitudes[0]) == 0) {
     // Rocket has landed
     landed = 1;
-    /*file.write("LANDING");*/ // Commented for unit testing
+    file.write("LANDED\r\n");
   }
 }
 
 /**
- * Returns the most recent altitude and temperature
- */
+   Returns the most recent altitude and temperature
+*/
 int getAltitude() {
-  Wire.requestFrom(0x68, 5); //0x60
+  Wire.requestFrom(0x60, 5);
   int temp = 0;
-  while(Wire.available()) { // TODO fix blocking
+  while (Wire.available()) { // TODO fix blocking
     temp = (temp << 4) + Wire.read();
   }
   return temp;
 }
 
 /**
- * Returns the most recent change in magnetic field
- */
+   Returns the most recent change in magnetic field
+*/
 int getMagnet() {
-  /*Wire.requestFrom(0x0E, 1);
+  Wire.requestFrom(0x0E, 1);
   while(!Wire.available()) {
     continue(); // TODO fix blocking
   }
-  return Wire.read();*/ // Commented for unit testing
-  return 10;
+  return Wire.read();
 }
 
 /**
- * Returns the acceleration for the 4 most recent altitudes
- */
+   Returns the acceleration for the 4 most recent altitudes
+*/
 float getAcceleration() {
-  return (((pastAltitudes[37] - pastAltitudes[36])/0.05) - ((pastAltitudes[39] - pastAltitudes[38])/0.05)) / 0.05;
+  return (((pastAltitudes[37] - pastAltitudes[36]) / 0.05) - ((pastAltitudes[39] - pastAltitudes[38]) / 0.05)) / 0.05;
 }
 
 /**
- * Polls data from sensors, then generates string to write to SD card
- */
+   Polls data from sensors, then generates string to write to SD card
+*/
 String poll() {
   // Retain only 40 past altitudes
   for (int i = 0; i < 39; i++) {
-    pastAltitudes[i] = pastAltitudes[i+1];
+    pastAltitudes[i] = pastAltitudes[i + 1];
   }
-  
+
   // Update altitude and temperature
   int temp = getAltitude();
   pastAltitudes[39] = temp >> 8;
   int temperature = temp & 0xFF;
-  
+
   // Update acceleration
   float acceleration = getAcceleration();
-  
+
   // Update magnetometer
   int magnet = getMagnet();
-  
+  magSum += magnet;
+  magCount++;
+
   // Get string to write to SD card
   String string;
   string.concat(minute());
@@ -228,56 +229,61 @@ String poll() {
   string.concat(":");
   string.concat(millis() % 1000);
   string.concat(",");
-  
+
   String temperatureString = String(temperature);
   string.concat(temperatureString);
   string.concat(",");
-  
+
   String altitudeString = String(pastAltitudes[39]);
   string.concat(altitudeString);
   string.concat(",");
-  
+
   String accelerationString = String(acceleration);
   string.concat(accelerationString);
   string.concat(",");
-  
-  String gforceString = String(acceleration/9.80665);
+
+  String gforceString = String(acceleration / 9.80665);
   string.concat(gforceString);
   string.concat(",");
 
   String magnetString = String(magnet);
   string.concat(magnetString);
   string.concat(",");
-  
+
   string.concat(analogRead(pr1in));
   string.concat(",");
   string.concat(analogRead(pr2in));
-  string.concat("\n");
-  
+  string.concat("\r\n");
+
   return string;
 }
 
 /**
- * Analyses flight data and writes results to SD card
- */
+   Analyses flight data and writes results to SD card
+*/
 void analyseData() {
-  // Increments filename if filename has been taken
-  int count = 0;
-  char filename[10];
-  do {
-    strcpy(filename, "");
-    strcat(filename, "data");
-    strcat(filename, count);
-    strcat(filename, ".txt");
-    count++;
-  } while (SD.exists(filename));
-  
-  // Create new data.txt file
-  file = SD.open(filename, FILE_WRITE);
-
-  // TODO add data analysis formulae
-  
+  // Data analysis formulae
+  float magAverage = magSum / magCount;
+  float magnetFloat = calculateChapmanFerraro(magAverage);
+  file.write("Magnetopause altitude: %f", magnetFloat);
   // Save and close data.txt file
   file.close();
+  // Do nothing
+  while (1) {};
+}
+
+/**
+   Calculates magnetopause using Chapman-Ferraro equation
+*/
+float calculateChapmanFerraro(float bField) {
+  //bField should be in Tesla, not microTesla
+  float R = 6.738 * pow(10, 6)
+  float mu = 4 * PI, // * pow(10, -7),
+  float rho = 1.12, // * pow(10, -20),
+  float v2 = 1.6; // * pow(10, 11);
+  int power = (-6 - 6 + 7 + 20 - 11);
+  float base = (2 * bField * bField) / (mu * rho * v2);
+  float result = R * pow(base * pow(10, power), 1.0 / 6.0);
+  return result;
 }
 
