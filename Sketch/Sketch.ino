@@ -72,7 +72,6 @@ void setup(void) {
   pinMode(pr2out, OUTPUT);
   pinMode(sda, OUTPUT);
   pinMode(scl, OUTPUT);
-  pinMode(10, OUTPUT); // Needed for SD library
 
   digitalWrite(led1, HIGH);
   digitalWrite(led2, HIGH);
