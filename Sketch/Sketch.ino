@@ -28,7 +28,7 @@ const unsigned long _INTERVAL = 20;
 // SD Variables
 File file;
 
-// pins
+// Pins
 const int led1 = 0;
 const int led2 = 1;
 const int ss = 10;
@@ -72,7 +72,6 @@ void setup(void) {
   pinMode(pr2out, OUTPUT);
   pinMode(sda, OUTPUT);
   pinMode(scl, OUTPUT);
-  pinMode(10, OUTPUT); // Needed for SD library
 
   digitalWrite(led1, HIGH);
   digitalWrite(led2, HIGH);
